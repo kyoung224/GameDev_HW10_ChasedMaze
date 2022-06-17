@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Simple Animation</title>
+
+<script type="application/javascript">
+
+var INTERVAL = 50;
+var DEBUG = false;
+
+var canvas;
+var ctx;
+
+var WIDTH = 640;
+var HEIGHT = 480;
+var MAXROW = 15;
+var MAXCOL = 20;
+var tileWidth = 32;
+var tileHeight = 32;
+var FOOTBALL = 3;
+var gameover = false;
+
+var SpriteRow = 0;
+var SpriteCol = 0;
+var MaxSpriteRow = 8;
+var MaxSpriteCol = 8;
+
+var SpriteX = 0;
+var SpriteY = 418;
+var SpriteWidth = 28;
+var SpriteHeight = 28;
+var EnemyX = 576;
+var EnemyY = 418;
+var EnemyWidth = 32;
+var EnemyHeight = 32;
+var GoalX = 512;
+var GoalY = 32;
+
+var SpriteImage = new Image();
+var FootballImage = new Image();
+var EnemyImage = new Image();
+var GoalImage = new Image();
+
+SpriteImage.src   = "Pounce.png";
+FootballImage.src   = "football.png";
+EnemyImage.src = "gasouthern.png";
+GoalImage.src = "goal.png";
+
+var myInterval;
+
+var player2move = 0;
+var directionMoving = 0;
+var moveAmount = 8;
+
+var myBoard = [
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
+  1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1,
+  1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1,
+  1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
+  1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1,
+  1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1,
+  1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1,
+  1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1,
+  1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
+  1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1,
+  1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+
+var Direction = {
+  LEFT: 0,
+  UP: 1,
+  RIGHT: 2,
+  DOWN: 3,
+  NONE: 4,
+};
+
+function eraseSprite(player, tempX, tempY) {
+  if (player == 1){
+    ctx.clearRect(tempX, tempY, SpriteWidth, SpriteHeight);
+  } else{
+    ctx.clearRect(tempX, tempY, EnemyWidth, EnemyHeight);
+  }
+}
+
+function drawTile(tile, r, c, tileWidth, tileHeight) {
+  ctx.drawImage(FootballImage,
+    tile*tileWidth, 0, tileWidth, tileHeight,
+    c*tileWidth, r*tileHeight, tileWidth, tileHeight);
+}
+
+function drawTiles() {
+  var index = 0;
+
+  ctx.drawImage(GoalImage, GoalX, GoalY);
+
+  for (var r=0; r<MAXROW; r++) {
+    for (var c=0; c<MAXCOL; c++) {
+      tile = myBoard[index];
+      drawTile(tile, r, c, tileWidth, tileHeight);
+
+      index++;
+    }
+  }
+}
+
+function drawSprite(player, tempX, tempY) {
+  if (player == 1){
+    ctx.drawImage(SpriteImage, tempX, tempY);
+  } else{
+    ctx.drawImage(EnemyImage, tempX, tempY);
+  }
+}
+
+function Tick() {
+  // eraseSprite(1, SpriteX, SpriteY);
+
+  drawSprite(1, SpriteX, SpriteY);
+  drawSprite(2, EnemyX, EnemyY);
+
+  moveEnemy();
+}
+
+function loadComplete() {
+  console.log("Load is complete.");
+  canvas = document.getElementById("theCanvas");
+  ctx = canvas.getContext("2d");
+  myInterval = self.setInterval(function(){Tick()}, INTERVAL);
+  drawTiles();
+}
+
+function checkGoal(){
+  if (SpriteX <= (GoalX + 8) && (SpriteX + SpriteWidth) >= GoalX
+   && SpriteY <= (GoalY + 8) && (SpriteY + SpriteHeight) >= GoalY){
+    document.bgColor = "#008000";
+    document.getElementById("playerStat").innerHTML = "Congratulations!";
+    clearInterval(myInterval);
+    gameover = true;
+  }
+}
+
+function checkCollision(newX, newY){
+  var tempRow = Math.floor(newY / tileHeight);
+  var tempCol = Math.floor(newX / tileWidth);
+
+  for (var r=0; r<MAXROW; r++) {
+    for (var c=0; c<MAXCOL; c++) {
+      if (myBoard[tempRow * MAXCOL + tempCol] == 1){
+        var x = c * tileWidth;
+        var y = r * tileHeight;
+        if (SpriteX <= (tileWidth + x) && (SpriteX + SpriteWidth) >= x
+         && SpriteY <= (tileHeight + y) && (SpriteY + SpriteHeight) >= y){
+           return true;
+        }
+      }
+    }
+  }
+  // if (SpriteX <= (GoalX + 8) && (SpriteX + SpriteWidth) >= GoalX
+  //  && SpriteY <= (GoalY + 8) && (SpriteY + SpriteHeight) >= GoalY){
+  if (SpriteX <= (EnemyX + 4) && (SpriteX + 4) >= EnemyX
+   && SpriteY <= (EnemyY + 4) && (SpriteY + 4) >= EnemyY){
+     document.getElementById("playerStat").innerHTML = "You've Lost!";
+     document.bgColor = "#f60000";
+     gameover = true;
+     clearInterval(myInterval);
+     return true;
+   }
+  return false;
+}
+
+function moveEnemy(){
+  var newX = EnemyX;
+  var newY = EnemyY;
+
+  var canImoveLeft = (!checkCollision(EnemyX - moveAmount, EnemyY)) &&
+        (!checkCollision(EnemyX - moveAmount, EnemyY + SpriteHeight));
+  var canImoveRight = (!checkCollision(EnemyX + SpriteWidth + moveAmount, EnemyY)) &&
+        (!checkCollision(EnemyX + SpriteWidth + moveAmount, EnemyY + SpriteHeight));
+  var canImoveUp = (!checkCollision(EnemyX, EnemyY - moveAmount)) &&
+        (!checkCollision(EnemyX + SpriteWidth, EnemyY - moveAmount));
+  var canImoveDown = (!checkCollision(EnemyX, EnemyY + SpriteHeight + moveAmount)) &&
+        (!checkCollision(EnemyX + SpriteWidth, EnemyY + SpriteHeight + moveAmount));
+
+  var canMoveSameDir = false;
+  switch (directionMoving) {
+    case Direction.LEFT:
+      // moving left
+      canMoveSameDir = canImoveLeft;
+      break;
+    case Direction.UP:
+      // moving up
+      canMoveSameDir = canImoveUp;
+      break;
+    case Direction.RIGHT:
+      // moving right
+      canMoveSameDir = canImoveRight;
+      break;
+    case Direction.DOWN:
+      // moving down
+      canMoveSameDir = canImoveDown;
+      break;
+  }
+
+  var dx = EnemyX - SpriteX;
+  var dy = EnemyY - SpriteY;
+
+  var myPreference = [0, 1, 2, 3];
+  // Assume we cannot move that way
+  var myPrefAbility = [false, false, false, false];
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    // Player1 is further away along X
+    if (dx > 0) {
+      // Try to move left
+      myPreference[0] = Direction.LEFT;
+      myPrefAbility[0] = canImoveLeft;
+      // Try not to move right
+      myPreference[3] = Direction.RIGHT;
+      myPrefAbility[3] = canImoveRight;
+    } else {
+      // Try to move right
+      myPreference[0] = Direction.RIGHT;
+      myPrefAbility[0] = canImoveRight;
+      // Try not to move left
+      myPreference[3] = Direction.LEFT;
+      myPrefAbility[3] = canImoveLeft;
+    }
+    // Now figure out the secondary preferences
+    if (dy > 0) {
+      // Try to move up
+      myPreference[1] = Direction.UP;
+      myPrefAbility[1] = canImoveUp;
+      // Try not to move down
+      myPreference[2] = Direction.DOWN;
+      myPrefAbility[2] = canImoveDown;
+    } else {
+      // Try to move down
+      myPreference[1] = Direction.DOWN;
+      myPrefAbility[1] = canImoveDown;
+      // Try not to move up
+      myPreference[2] = Direction.UP;
+      myPrefAbility[2] = canImoveUp;
+    }
+  } else {
+    // Player1 is further away along Y (or equi-distant)
+    if (dy > 0) {
+      // Try to move up
+      myPreference[0] = Direction.UP;
+      myPrefAbility[0] = canImoveUp;
+      // Try not to move down
+      myPreference[3] = Direction.DOWN;
+      myPrefAbility[3] = canImoveDown;
+    } else {
+      // Try to move down
+      myPreference[0] = Direction.DOWN;
+      myPrefAbility[0] = canImoveDown;
+      // Try not to move up
+      myPreference[3] = Direction.UP;
+      myPrefAbility[3] = canImoveUp;
+    }
+    // Now figure out the secondary preferences
+    if (dx > 0) {
+      // Try to move left
+      myPreference[1] = Direction.LEFT;
+      myPrefAbility[1] = canImoveLeft;
+      // Try not to move right
+      myPreference[2] = Direction.RIGHT;
+      myPrefAbility[2] = canImoveRight;
+    } else {
+      // Try to move right
+      myPreference[1] = Direction.RIGHT;
+      myPrefAbility[1] = canImoveRight;
+      // Try not to move left
+      myPreference[2] = Direction.LEFT;
+      myPrefAbility[2] = canImoveLeft;
+    }
+  }
+  var m = 0;
+  while ((m < myPrefAbility.length) && (!myPrefAbility[m])) {
+    m++;
+  }
+  player2move = myPreference[m];
+
+  // Implement the move
+  switch (player2move) {
+    case Direction.LEFT:
+      // Go left, player 2
+      newX = newX - moveAmount;
+      if (newX < 0)
+        newX = 0;
+      directionMoving = 0;
+      break;
+    case Direction.UP:
+      // Go up, player 2
+      newY = newY - moveAmount;
+      if (newY < 0)
+        newY = 0;
+      directionMoving = 1;
+      break;
+    case Direction.RIGHT:
+      // Go right, player 2
+      newX = newX + moveAmount;
+      if (newX + tileWidth > WIDTH)
+        newX = WIDTH - tileWidth;
+      directionMoving = 2;
+      break;
+    case Direction.DOWN:
+      // Go down, player 2
+      newY = newY + moveAmount;
+      if (newY + tileHeight > HEIGHT)
+        newY = HEIGHT - tileWidth;
+      directionMoving = 3;
+      break;
+  }
+  if ((!checkCollision(newX, newY)) &&
+      (!checkCollision(newX + SpriteWidth, newY)) &&
+      (!checkCollision(newX, newY + SpriteHeight)) &&
+      (!checkCollision(newX + SpriteWidth, newY + SpriteHeight))) {
+    eraseSprite(2, EnemyX, EnemyY);
+    EnemyX = newX;
+    EnemyY = newY;
+    drawSprite(2, EnemyX, EnemyY);
+  }
+}
+
+function whenKeyPressed(key) {
+  switch (key) {
+    case 28: //right
+      eraseSprite(1, SpriteX, SpriteY);
+      SpriteX += 32;
+
+      if (SpriteX > 610)
+        SpriteX = 610;
+
+      if (checkCollision(SpriteX, SpriteY)){
+        SpriteX -= 32;
+      }
+
+      drawSprite(1, SpriteX, SpriteY);
+      checkGoal();
+      break;
+
+    case 29: //left
+      eraseSprite(1, SpriteX, SpriteY);
+      SpriteX -= 32;
+
+      if (SpriteX <= 0)
+        SpriteX = 0;
+
+      if (checkCollision(SpriteX, SpriteY)){
+        SpriteX += 32;
+      }
+
+      drawSprite(1, SpriteX, SpriteY);
+      checkGoal();
+      break;
+
+    case 30: //up
+      eraseSprite(1, SpriteX, SpriteY);
+      SpriteY = SpriteY - 32;
+
+      if (SpriteY < 0)
+        SpriteY = 0;
+
+      if (checkCollision(SpriteX, SpriteY)){
+        SpriteY += 32;
+      }
+
+      drawSprite(1, SpriteX, SpriteY);
+      checkGoal();
+      break;
+
+    case 31: //down
+      eraseSprite(1, SpriteX, SpriteY);
+      SpriteY = SpriteY + 32;
+
+      if (SpriteY > 450)
+        SpriteY = 450;
+
+      if (checkCollision(SpriteX, SpriteY)){
+        SpriteY -= 32;
+      }
+
+      drawSprite(1, SpriteX, SpriteY);
+      checkGoal();
+      break;
+  }
+}
+
+</script>
+
+</head>
+<body onload="loadComplete()" bgcolor="#0f0000" text="#ffffff">
+
+<center>
+  <canvas id="theCanvas" tabindex="1" width="640" height="480"></canvas>
+  <p id="playerStat"></p>
+</center>
+
+<script type="application/javascript">
+
+  document['onkeydown'] = function(event) {
+    event = event || window.event;
+    var key = event.which || event.cursor;
+    switch (key) {
+      case 37:  // Left arrow, ASCII 29
+        key = 29;
+        break;
+      case 38:  // Up arrow, ASCII 30
+        key = 30;
+        break;
+      case 39:  // Right arrow, ASCII 28
+        key = 28;
+        break;
+      case 40:  // Down arrow, ASCII 31
+        key = 31;
+        break;
+    }
+
+    if (gameover == false){
+      whenKeyPressed(key);
+    }
+
+  };
+</script>
+
+
+</body>
+</html>
